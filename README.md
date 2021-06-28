@@ -39,7 +39,6 @@ The CI workflow is designed to fully automate the setup and execution of the tes
         volumes
         ├── cloud-point-test_testconfig1
         └── cloud-point-test_testconfig2
-           ```
 	 
 	 2. *ValidateDockerImage*  
 	      Checks if the docker images requires a rebuild. It does this by comparing the current version of the file in the volume directory with the one in the repository.
