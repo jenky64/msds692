@@ -43,22 +43,35 @@ def revert_commit(branch: str, wkspc_dir: str) -> bool:
 
     commit = read_commit(wkspc_dir)
 
-    # perform the git operations to execute the rever
-    # revert
-    # checkout the brach
-    # push the revert to github
-    if commit is not 'false':
-        revert_cmd = f'git revert {commit} --no-edit'
-        checkout_cmd = f'git checkout -b {branch}'
-        push_cmd = f'git push origin {branch}'
-
-        os.system(revert_cmd)
-        os.system(checkout_cmd)
-        os.system(push_cmd)
-
-    else:
-        return False
-
+    if commit != 'false':                                                       
+        revert_cmd = f'git revert --no-commit {commit}..HEAD >/dev/null 2>&1'   
+        commit_cmd = f'git commit -am "reverting to most recent clean state: tag -> {commit}." >/dev/null 2>&1'
+        checkout_cmd = f'git checkout -B {branch} > /dev/null 2>&1'             
+   
+        # execute each call and bail if any fail                                
+        try:                                                                    
+            execute_status = not os.system(revert_cmd)                          
+            logging.info("git revert successful")                               
+        except Exception as e:                                                  
+            logging.error("git revert failed: {e.message}")                     
+   
+        if execute_status:                                                      
+            try:                                                                
+                execute_state = not os.system(commit_cmd)                       
+                logging.info("git commit successful")                           
+            except Exception as e:                                              
+                logging.error("git commit failed: {e.message}")                 
+   
+        if execute_status:                                                      
+            try:                                                                
+                execute_status = not os.system(checkout_cmd)                    
+                logging.info("git checkout successful")                         
+            except Exception as e:                                              
+                logging.error("git checkout failed: {e.message}")               
+   
+        return execute_status                                                   
+    else:                                                                       
+        return False                                 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -77,10 +90,12 @@ if __name__ == '__main__':
         branch = args.branch
         ret = revert_commit(branch=branch, wkspc_dir=wkspc_dir)
 
-        if ret(0):
-            sys.exit(1)
-        else:
+        if ret:
+            logging.info("git revert process was successful")
             sys.exit(0)
+        else:
+            logging.error("git revert process failed. see logs for details.")
+            sys.exit(1)
     else:
         sys.exit(1) 
 
