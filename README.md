@@ -104,6 +104,7 @@ The CI design contains files that are required by the repositories and files tha
             |   |-- revert_commit.py 
             |   |-- save_commit.py 
             └── runtests.py
+	    ```
     
     2. *files*
         1. *configure.py*: creates volume directory if necessary and populates it with the necessary files
