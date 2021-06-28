@@ -91,19 +91,20 @@ The CI design contains files that are required by the repositories and files tha
         (base) l2l-regis-cicd:davidj / >  tree jenkins
         jenkins
         ├── bin
-        │   └── jenkins-cli.jar
         └── scripts
-            ├── configure.py
-            ├── docker
-            │   ├── build.py
-            │   ├── run.py
-            │   └── validate.py
-            |__ git
-            |   |-- delete_commit.py 
-            |   |-- read_commit.py 
-            |   |-- revert_commit.py 
-            |   |-- save_commit.py 
-            └── runtests.py
+        ├── configure.py
+        ├── docker
+        │   ├── build.py
+        │   ├── run.py
+        │   └── validate.py
+        ├── git
+        │   ├── delete_commit.py
+        │   ├── read_commit.py
+        │   ├── revert_commit.py
+        │   └── save_commit.py
+        ├── __pycache__
+        │   └── docker.cpython-39.pyc
+        └── runtests.py
 	    ```
     
     2. *files*
