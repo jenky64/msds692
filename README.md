@@ -32,14 +32,14 @@ The CI workflow is designed to fully automate the setup and execution of the tes
 	 1. *Configure*
 	 This stage creates a branch specific volume directory if one does not already exist and initially populates it with the current version of the dockerfile. The current directory naming for branch specific volumes is */volumes/<repository_branch>* and is currently not managed by docker. For example, with a repository named cloud-point-test with branches named testconfig1 and testconfig2, the volume directory will look like:
 	 
-	    ```
-	    l2l-regis-cicd:davidj / >  pwd
+	   ```
+	l2l-regis-cicd:davidj / >  pwd
         /
         (base) l2l-regis-cicd:davidj / >  tree volumes
         volumes
         ├── cloud-point-test_testconfig1
         └── cloud-point-test_testconfig2
-        ```
+           ```
 	 
 	 2. *ValidateDockerImage*  
 	      Checks if the docker images requires a rebuild. It does this by comparing the current version of the file in the volume directory with the one in the repository.
