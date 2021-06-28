@@ -8,6 +8,7 @@ pipeline {
         COMMIT_STATUS=1
         CHECKOUT_STATUS=1
         REVERT_STATUS=1
+        COMMIT_TAG=""
     }
 
     stages {
@@ -17,16 +18,14 @@ pipeline {
                     echo "git branch: ${env.GIT_BRANCH}"
                     echo "git url: ${env.GIT_URL}"
                     echo "git commit: ${env.GIT_COMMIT}"
-                    echo "git previous commit: ${env.GIT_PREVIOUS_COMMIT}"
-
                     JOB_DIR = JOB_NAME.replace('/','_')
 
                     echo "checking for repository branch volume directory..."
                     MKDIR = sh(returnStdout: true, script: "/usr/bin/python3 ${env.SCRIPT_DIR}/configure.py -d ${env.WORKSPACE}").trim()
                     if (MKDIR == 'true') {
-                        echo "repository branch volume directory ${JOB_DIR} successfully created."
+                        echo "repository branch volume directory /volumes/${JOB_DIR} successfully created."
                     } else {
-                        echo "repository branch volume directory ${JOB_DIR} already exists."
+                        echo "repository branch volume directory /volumes/${JOB_DIR} already exists."
                     }
                 }
             }
@@ -56,7 +55,7 @@ pipeline {
                     BUILD = sh(returnStatus: true, script: "/usr/bin/python3 ${env.SCRIPT_DIR}/docker/build.py -d ${env.WORKSPACE} -t l2lcommit:latest")
                     echo "build_image = ${BUILD_IMAGE}"
                     if (BUILD_IMAGE == 'true') {
-                        echo "Docker image rebuild passed."
+                        echo "Docker image rebuild completed successfully."
                     } else {
                         echo "Docker image rebuild failed.."
                     }
@@ -70,12 +69,12 @@ pipeline {
                     RET = sh(returnStatus: true, script: "/usr/bin/python3 ${env.SCRIPT_DIR}/docker/run.py -d ${env.WORKSPACE} -i l2lcommit:latest")
                     echo "ret = ${RET}"
                     if (RET == 0) {
-                        echo "tests passed. saving commit tag."
+                        echo "tests passed successfully. saving commit tag ${env.GIT_COMMIT}."
                         SAVE_COMMIT = sh(returnStatus: true, script: "/usr/bin/python3 ${env.SCRIPT_DIR}/git/save_commit.py -c ${env.GIT_COMMIT} -d ${env.WORKSPACE}")
                         if (SAVE_COMMIT == 0) {
-                            echo "commit tag save successful"
+                            echo "commit tag saved successfully"
                         } else {
-                            echo "commit tag save failed"
+                            echo "commit tag save failed. manual intervention required"
                         }
                     } else {
                         echo "tests failed. commit tag not saved. need to revert commit"
@@ -83,7 +82,7 @@ pipeline {
                 }
             }
         }
-        stage("RevertCommit") {
+        stage("CommitRevert") {
             when {
                 expression {
                     RET != 0
@@ -91,20 +90,10 @@ pipeline {
             }
             steps {
                 script {
-                    echo "reverting commit due to test failure..."
-                    COMMIT = sh(returnStdout: true, script: "/usr/bin/python3 ${env.SCRIPT_DIR}/git/read_commit.py -d ${env.WORKSPACE}").trim()
-                    if (COMMIT == 'false') {
-                        echo "unable to read commit file. cannot revert commit. must be managed manually."
-                    } else {
-                       echo "commit = ${COMMIT}"
-                    }
-                    //REVERT_STATUS = sh(returnStatus: true, script: "git revert ${COMMIT} --no-edit")
-                    REVERT_STATUS = sh(returnStatus: true, script: "git revert ${COMMIT}")
-                    //COMMIT_STATUS = sh(returnStatus: true, script: "git commit -am 'reverting to clean state'")
-                    //COMMIT_STATUS = 0
-                    CHECKOUT_STATUS = sh(returnStatus: true, script: "git checkout -B ${env.GIT_BRANCH}")
+                    COMMIT_TAG = sh(returnStdout: true, script: "/usr/bin/python3 ${env.SCRIPT_DIR}/git/read_commit.py -d ${env.WORKSPACE}").trim()
+                    echo "reverting commits from ${COMMIT_TAG} forward due to test failure..."
+                    REVERT_STATUS = sh(returnStatus: true, script: "/usr/bin/python3 ${env.SCRIPT_DIR}/git/revert_commit.py -b ${env.GIT_BRANCH} -d ${env.WORKSPACE}")
                     echo "REVERT_STATUS = ${REVERT_STATUS}"
-                    echo "CHECKOUT_status = ${CHECKOUT_STATUS}"
                 }
             }
         }
@@ -114,23 +103,38 @@ pipeline {
             }
             when {
                 expression {
-                    CHECKOUT_STATUS == 0
+                    REVERT_STATUS == 0
                 }
             }
             steps {
                 script {
-                    echo "testing push after revert"
                     echo "branch = ${env.GIT_BRANCH}"
-                    echo "user = ${GIT_AUTH_USR}"
-                    echo "password = ${GIT_AUTH_PSW}"
                     sh('''
                     git config --local credential.helper "!f() { echo username=\\$GIT_AUTH_USR; echo password=\\$GIT_AUTH_PSW; }; f"
-                    git push origin HEAD:dev
                     ''')
+                    GIT_STATUS = sh(returnStatus: true, script: "/usr/bin/python3 ${env.SCRIPT_DIR}/git/git_push.py -b ${env.GIT_BRANCH}")
+                    echo "GIT_STATUS = ${GIT_STATUS}"
+                    if (GIT_STATUS == 0) {
+                        COMMIT =
+                        echo "git push after revert completed successfully"
+                    }
                 }
             }
-        }
-        stage("Notify") {
-        }
+       }
+       stage("CleanUp") {
+           steps {
+               script {
+                   echo "this is the cleanup stage"
+               }
+           }
+       }
+       stage("Notify") {
+           steps {
+               script {
+                   echo "this is the notify stage"
+               }
+           }
+       }
+
     }
 }
