@@ -5,10 +5,9 @@ pipeline {
         BASE_DIR='/jenkins'
         SCRIPT_DIR="${env.BASE_DIR}/scripts"
         VALID_IMAGE=0
-        COMMIT_STATUS=1
-        CHECKOUT_STATUS=1
         REVERT_STATUS=1
         COMMIT_TAG=""
+        RUN_STATUS=""
     }
 
     stages {
@@ -66,9 +65,9 @@ pipeline {
             steps {
                 script {
                     echo "running tests"
-                    RET = sh(returnStatus: true, script: "/usr/bin/python3 ${env.SCRIPT_DIR}/docker/run.py -d ${env.WORKSPACE} -i l2lcommit:latest")
-                    echo "ret = ${RET}"
-                    if (RET == 0) {
+                    RUN_STATUS = sh(returnStatus: true, script: "/usr/bin/python3 ${env.SCRIPT_DIR}/docker/run.py -d ${env.WORKSPACE} -i l2lcommit:latest")
+                    echo "RUN_STATUS = ${RUN_STATUS}"
+                    if (RUN_STATUS == 0) {
                         echo "tests passed successfully. saving commit tag ${env.GIT_COMMIT}."
                         SAVE_COMMIT = sh(returnStatus: true, script: "/usr/bin/python3 ${env.SCRIPT_DIR}/git/save_commit.py -c ${env.GIT_COMMIT} -d ${env.WORKSPACE}")
                         if (SAVE_COMMIT == 0) {
@@ -85,7 +84,7 @@ pipeline {
         stage("CommitRevert") {
             when {
                 expression {
-                    RET != 0
+                    RUN_STATUS != 0
                 }
             }
             steps {
@@ -135,6 +134,5 @@ pipeline {
                }
            }
        }
-
     }
 }
