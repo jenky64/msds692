@@ -30,20 +30,20 @@ The CI workflow is designed to fully automate the setup and execution of the tes
  This is made possible through the repository github-webhook and is specific to the branch being pushed to.   
  3.  **pipeline stages**
 	 1. *Configure*
-	 This stage creates a branch specific volume directory if one does not already exist and initially populates it with the current version of the dockerfile. The current directory naming for branch specific volumes is */volumes/<repository_branch>* and is currently not managed by docker. For example, with a repository named cloud-point-test with branches named testconfig1 and testconfig2, the volume directory will look like:
+	 This stage creates a branch specific volume directory if one does not already exist and initially populates it with the current version of the dockerfile. The current directory naming for branch specific volumes is */volumes/<repository_branch>* and is currently not managed by docker. For example, with a repository named cloud-point-test with branches named testconfig1 and testconfig2, the volume directory will look like.
 	 
-	    ```
-	    l2l-regis-cicd:davidj / >  pwd
+	 ```
+        (base) l2l-regis-cicd:davidj / >  pwd
         /
         (base) l2l-regis-cicd:davidj / >  tree volumes
         volumes
         ├── cloud-point-test_testconfig1
         └── cloud-point-test_testconfig2
-        ```
+	    ```
 	 
-	 2. *ValidateDockerImage*  
-	      Checks if the docker images requires a rebuild. It does this by comparing the current version of the file in the volume directory with the one in the repository.
-	
+	 2. *ValidateDockerImage*
+	     Checks if the docker image requires a rebuild. It does this by comparing the current version of the file in the volume directory with the one in the repository.
+	          
 	 3. *DockerRebuild*    
 	     Rebuilds the docker image if the configure stage has determined one is necessary.
 	
@@ -53,15 +53,16 @@ The CI workflow is designed to fully automate the setup and execution of the tes
 	       2. Determines if the nox managed virtual environments can be reused. This is done by checking if the *noxfile* or the *module-list* files have changed since the previous branch push. The *module-list* files are used by nox to build the virtual environments. The *noxfile* determines how the tests are run and how it is configured can render the current nox managed environemnts environments invalid. If any of these files have changed, the current environment is flagged as invalid and it must be recreated. 
 	       3. Run the tests with the current or recreated virtual environments.
 	       4. Create backup copies of the *dockerfile*, the *noxfile*, and the *module-list* files. These will be used on the subsequent run to determine if any of the have itermittently changed.
-		   5. Save the commit tag if the tests are successful. This is required for reverting the commit in subsequent runs if they fail.
+	       5. Moves the nox/pytest generated html report file(s) to */volumes/<name>*.
+	       6. If the tests are successful, the commit tag is saved in */volumes/<name>/commit.txt*. This is required for reverting commits in subsequent runs if the tests fail.
 	
 	 5. *RevertCommit*  
-	     Backout the commit pushed to the branch. This will occur only if one or more tests failed and will be skipped otherwise.
+	     This stage reverts all commits made to the branch since the commit tag of last successful tests. This will occur only if one or more tests failed and will be skipped otherwise. It uses the commit tag foun in *commit.txt* as the starting point. 
 
 	 6. *PushAfterCommit*  
-		 Push the reverted commit to github.
-		
-	 6. *Notify*  
+		 Push the reverted commit to github.This will occur only if a revert is required and the revert is successful.
+	 
+	 7. *Notify*  
 	     Each nox run generates an html formatted results report. The current process is to email those files to the repository/branch owner. This has not been fully implemented at this time. Another possibility is to make a slack notification indicating the repository, branch, and success/failure status.
 
 ### Current workflow concerns and considerations
@@ -91,19 +92,21 @@ The CI design contains files that are required by the repositories and files tha
         (base) l2l-regis-cicd:davidj / >  tree jenkins
         jenkins
         ├── bin
-        │   └── jenkins-cli.jar
         └── scripts
-            ├── configure.py
-            ├── docker
-            │   ├── build.py
-            │   ├── run.py
-            │   └── validate.py
-            |__ git
-            |   |-- delete_commit.py 
-            |   |-- read_commit.py 
-            |   |-- revert_commit.py 
-            |   |-- save_commit.py 
-            └── runtests.py
+        ├── configure.py
+        ├── docker
+        │   ├── build.py
+        │   ├── run.py
+        │   └── validate.py
+        ├── git
+        │   ├── delete_commit.py
+        │   ├── read_commit.py
+        │   ├── revert_commit.py
+        │   └── save_commit.py
+        ├── __pycache__
+        │   └── docker.cpython-39.pyc
+        └── runtests.py
+	    ```
     
     2. *files*
         1. *configure.py*: creates volume directory if necessary and populates it with the necessary files
